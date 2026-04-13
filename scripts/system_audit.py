@@ -1,6 +1,7 @@
 import subprocess
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 SERVERS = [
     {"name": "wsz-server", "zone": "us-central1-a"},
@@ -15,14 +16,18 @@ def run_ssh_command(server, command):
         "--quiet", "--command", command
     ]
     try:
+        # Timeout 60s cho mỗi server
         result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=60)
-        return result.stdout if result.returncode == 0 else f"Error: {result.stderr}"
+        if result.returncode == 0:
+            return server["name"], result.stdout
+        else:
+            return server["name"], f"Error: {result.stderr}"
+    except subprocess.TimeoutExpired:
+        return server["name"], "Error: Connection Timeout (60s)"
     except Exception as e:
-        return f"Exception: {str(e)}"
+        return server["name"], f"Exception: {str(e)}"
 
 def get_audit_commands():
-    # Thống kê IP, Status Code, và User-Agent từ log container trong 1h qua
-    # Giả định log format chuẩn (có thể cần điều chỉnh theo thực tế)
     return """
     echo "--- DOCKER STATUS ---"
     sudo docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
@@ -32,7 +37,6 @@ def get_audit_commands():
     df -h / | tail -1
     
     echo "--- TOP 10 IPs (Last 1h) ---"
-    # Tìm tất cả container và lấy log 1h, sau đó thống kê IP
     sudo docker ps --format "{{.Names}}" | xargs -I {} sh -c 'sudo docker logs --since 1h {} 2>&1' | \
     grep -oE "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" | sort | uniq -c | sort -nr | head -n 10
     
@@ -44,9 +48,18 @@ def get_audit_commands():
 def main():
     report = {}
     audit_cmd = get_audit_commands()
-    for server in SERVERS:
-        print(f"Auditing {server['name']}...")
-        report[server['name']] = run_ssh_command(server, audit_cmd)
+    
+    print(f"🚀 Starting parallel audit on {len(SERVERS)} servers...\n")
+    
+    with ThreadPoolExecutor(max_workers=len(SERVERS)) as executor:
+        # Submit tasks
+        future_to_server = {executor.submit(run_ssh_command, s, audit_cmd): s["name"] for s in SERVERS}
+        
+        # Process results as they complete
+        for future in as_completed(future_to_server):
+            server_name, result = future.result()
+            print(f"✅ [Done] Audit completed for: {server_name}")
+            report[server_name] = result
     
     print("\n--- FINAL AUDIT DATA ---")
     print(json.dumps(report, indent=2))
