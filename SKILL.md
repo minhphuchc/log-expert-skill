@@ -25,11 +25,12 @@ Kích hoạt skill này khi bạn nhận được yêu cầu:
 
 Thực hiện theo quy trình tự động hóa sau:
 
-### Bước 1: Thu thập Dữ liệu Tổng hợp
-Chạy script audit để lấy dữ liệu từ cả 3 server:
+### Bước 1: Thu thập Dữ liệu Tổng hợp (Parallel Audit)
+Chạy script audit mới để lấy dữ liệu đồng thời từ cả 3 server. Script này sử dụng multi-threading để tối ưu hóa thời gian:
 ```bash
 python3 ./scripts/system_audit.py
 ```
+*Lưu ý: Bạn sẽ thấy các dòng `✅ [Done]` xuất hiện bất đồng bộ khi từng server hoàn tất việc quét.*
 
 ### Bước 2: Phân tích Chuyên sâu (AI Analyzer)
 Đọc dữ liệu từ Bước 1 và thực hiện:
@@ -49,20 +50,21 @@ AI sẽ tạo một JSON payload chuyên nghiệp và gửi qua:
 ```bash
 python3 ./scripts/send_to_discord.py '<JSON_PAYLOAD>'
 ```
-Cấu trúc JSON mong muốn:
+Cấu trúc JSON mong muốn (Sử dụng `\\n` để ngắt dòng trong JSON string):
 {
   "embeds": [{
-    "title": "🛡️ BÁO CÁO SRE CHI TIẾT",
-    "color": 15158332,
+    "title": "🛡️ BÁO CÁO SRE CHI TIẾT - [NGÀY]",
+    "color": 15158332, # Màu đỏ nếu có lỗi nghiêm trọng, 15844367 (Vàng) nếu cảnh báo
     "fields": [
-      {"name": "Server status", "value": "..."},
-      {"name": "Error details", "value": "..."},
-      {"name": "Crawl & Traffic", "value": "..."},
-      {"name": "Actionable Suggestions", "value": "..."}
+      {"name": "🔴 wsz-server (Main)", "value": "Status: **TIMEOUT**\\nCritical: Không thể SSH vào server. Cần kiểm tra gấp trên GCE Console."},
+      {"name": "🟡 orcas (Data)", "value": "Status: **STABLE/WARNING**\\n- DB Error: `ETIMEDOUT` kết nối MySQL.\\n- Traffic: IP `10.128.15.198` (2478 req/h)."},
+      {"name": "🟡 SEA Instance", "value": "Status: **UNHEALTHY**\\n- `educooking-client`: Unhealthy (4 weeks).\\n- Lỗi phân quyền: `EACCES` tại Next.js cache.\\n- API Error: Gặp lỗi `429` (Too many requests)."},
+      {"name": "🚀 Hành động đề xuất", "value": "1. Restart `wsz-server` nếu Console báo treo.\\n2. Fix permission cache trên SEA Instance.\\n3. Kiểm tra kết nối MySQL từ `orcas` tới DB server."}
     ],
-    "footer": {"text": "LogExpert v2.0"}
+    "footer": {"text": "LogExpert v2.0 | Senior SRE Bot"}
   }]
 }
+
 
 ## Tài Nguyên Cấu Thành
 
