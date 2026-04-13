@@ -21,6 +21,16 @@ Kích hoạt skill này khi bạn nhận được yêu cầu:
 | **orcas** | us-central1-a | Server xử lý dữ liệu |
 | **instance-20240707-081221** | asia-southeast1-a | Server khu vực Đông Nam Á |
 
+## Cấu hình Webhook Discord
+
+Để cấu hình Webhook URL, bạn có thể thực hiện một trong hai cách:
+
+1.  **Biến môi trường**: `export DISCORD_WEBHOOK_URL="your_webhook_url"`
+2.  **File cấu hình**: Tạo file `.env.logexpert` tại thư mục gốc với nội dung:
+    ```
+    DISCORD_WEBHOOK_URL="your_webhook_url"
+    ```
+
 ## Workflow SRE (Nâng cấp)
 
 Thực hiện theo quy trình tự động hóa sau:

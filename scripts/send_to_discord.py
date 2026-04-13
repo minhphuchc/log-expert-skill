@@ -38,6 +38,16 @@ def send_to_discord(webhook_url, payload_or_content):
 
 if __name__ == "__main__":
     url = os.environ.get('DISCORD_WEBHOOK_URL')
+    
+    # Fallback to .env.logexpert if env var is missing
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.logexpert')
+    if not url and os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            for line in f:
+                if line.startswith('DISCORD_WEBHOOK_URL='):
+                    url = line.split('=', 1)[1].strip().strip('\"').strip('\'')
+                    break
+
     if len(sys.argv) >= 2:
         # Nếu truyền 2 tham số, tham số 1 là URL, tham số 2 là message
         if len(sys.argv) == 3:
@@ -47,6 +57,6 @@ if __name__ == "__main__":
             content = sys.argv[1]
             
         if not url:
-            print("Error: Webhook URL missing")
+            print("Error: Webhook URL missing. Please set DISCORD_WEBHOOK_URL env var or create .env.logexpert file.")
             sys.exit(1)
         send_to_discord(url, content)
