@@ -1,6 +1,6 @@
 ---
 name: log-expert
-description: Chuyên gia phân tích log hệ thống trên GCE, hỗ trợ Docker logs và gửi báo cáo qua Discord. Kích hoạt khi cần kiểm tra sức khỏe server wsz-server, điều tra lỗi ứng dụng (JSON, OpenAI, DB, OOM, CPU, Stacktrace, Anomaly), hoặc tổng hợp báo cáo log Senior SRE level.
+description: Chuyên gia phân tích log hệ thống trên GCE, hỗ trợ Docker logs và gửi báo cáo qua Discord. Kích hoạt khi cần kiểm tra sức khỏe các server (wsz-server, orcas, instance-20240707-081221), điều tra lỗi ứng dụng (JSON, OpenAI, DB, OOM, CPU, Stacktrace, Anomaly), hoặc tổng hợp báo cáo log Senior SRE level.
 ---
 
 # Log Expert - Chuyên Gia Phân Tích Log (Senior SRE Level)
@@ -9,59 +9,60 @@ description: Chuyên gia phân tích log hệ thống trên GCE, hỗ trợ Dock
 
 ## When to use
 Kích hoạt skill này khi bạn nhận được yêu cầu:
-- Kiểm tra log hoặc tình trạng của server `wsz-server` trên Google Cloud.
+- Kiểm tra log hoặc tình trạng của các server trọng yếu: `wsz-server`, `orcas`, hoặc `instance-20240707-081221`.
 - Điều tra nguyên nhân các lỗi ứng dụng phức tạp (OOM, Stacktrace, Anomaly detection).
 - Phân tích hệ thống theo tiêu chuẩn SRE và gửi báo cáo chuyên sâu lên Discord.
 
-## Workflow SRE (5 Bước Chuẩn)
+## Danh sách Server & Cấu hình (GCE)
 
-Chào SRE! Đây là quy trình phân tích hệ thống chuyên sâu. Hãy thực hiện nghiêm ngặt các bước sau:
+| Server Name | Zone | Mục đích |
+| :--- | :--- | :--- |
+| **wsz-server** | us-central1-a | Server chính (v1/v2) |
+| **orcas** | us-central1-a | Server xử lý dữ liệu |
+| **instance-20240707-081221** | asia-southeast1-a | Server khu vực Đông Nam Á |
 
-### Bước 1: Thu thập Ngữ cảnh (Context Collection)
-Kết nối SSH và thu thập thông tin tài nguyên hệ thống để xác định "môi trường" của lỗi:
+## Workflow SRE (Nâng cấp)
+
+Thực hiện theo quy trình tự động hóa sau:
+
+### Bước 1: Thu thập Dữ liệu Tổng hợp
+Chạy script audit để lấy dữ liệu từ cả 3 server:
 ```bash
-# Kết nối GCE
-gcloud compute ssh wsz-server --zone=us-central1-a --quiet
-
-# Kiểm tra tài nguyên hệ thống
-top -b -n 1 | head -n 20
-df -h
-free -h
-
-# Trích xuất Docker Logs
-sudo docker logs --since 1h wsz-server-v1
+python3 ./scripts/system_audit.py
 ```
 
-### Bước 2: Phân loại (Triage)
-Dựa trên log và tài nguyên, xác định mức độ ưu tiên:
-- **P0/Critical**: Hệ thống sập (OOM, DB Down, No Space Left).
-- **P1/High**: Lỗi chức năng chính (OpenAI Timeout, Auth Fail).
-- **P2/Normal**: Lỗi lẻ tẻ hoặc Warning.
+### Bước 2: Phân tích Chuyên sâu (AI Analyzer)
+Đọc dữ liệu từ Bước 1 và thực hiện:
+1. **Health Check**: Xác định container Unhealthy/Exited và tìm nguyên nhân trong log.
+2. **Crawl Detection**: Kiểm tra "TOP 10 IPs". Nếu một IP có lượng request vượt trội (> 30% tổng) hoặc User-Agent lạ, đánh dấu là "Crawl Detected".
+3. **Error Analysis**: Nhận diện các lỗi Critical (5xx, Timeout, OOM).
+4. **Correlation**: Kiểm tra xem lỗi có xảy ra đồng thời trên nhiều server/container không.
 
-### Bước 3: Phân tích Pattern (Pattern Analysis)
-Sử dụng tài liệu tại `./references/expert-knowledge.md` để tìm các dấu hiệu:
-- **Retry Storm**: Request tăng đột biến kèm lỗi 429/503.
-- **Cascading Failure**: Lỗi DB gây nghẽn kết nối diện rộng.
-- **Memory Leak**: RAM khả dụng giảm dần theo thời gian.
+### Bước 3: Đưa ra Gợi ý Hành động
+Dựa trên phân tích, đề xuất các hành động:
+- Restart container cụ thể.
+- Chặn IP (nếu crawl/attack).
+- Kiểm tra kết nối mạng/DB.
 
-### Bước 4: Tóm tắt Báo cáo (Report Summary)
-Tạo báo cáo Markdown chuyên nghiệp gồm:
-- **Executive Summary**: Trạng thái "Health" của hệ thống.
-- **Detailed Findings**: Phân tích log patterns và số liệu tài nguyên.
-- **Root Cause Analysis (RCA)**: Xác định nguyên nhân gốc rễ.
-
-### Bước 5: Kế hoạch Hành động (Action Plan)
-Đề xuất các bước khắc phục cụ thể và gửi báo cáo qua Discord. Thiết lập biến môi trường `DISCORD_WEBHOOK_URL` trước khi gửi:
+### Bước 4: Báo cáo Discord (Embed Format)
+AI sẽ tạo một JSON payload chuyên nghiệp và gửi qua:
 ```bash
-# Thiết lập Webhook
-export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
-
-# Gửi báo cáo (tự động dùng DISCORD_WEBHOOK_URL)
-python3 ./scripts/send_to_discord.py "NỘI_DUNG_BÁO_CÁO_SRE"
-
-# Hoặc cung cấp trực tiếp URL
-python3 ./scripts/send_to_discord.py "https://discord.com/api/webhooks/..." "NỘI_DUNG_BÁO_CÁO_SRE"
+python3 ./scripts/send_to_discord.py '<JSON_PAYLOAD>'
 ```
+Cấu trúc JSON mong muốn:
+{
+  "embeds": [{
+    "title": "🛡️ BÁO CÁO SRE CHI TIẾT",
+    "color": 15158332,
+    "fields": [
+      {"name": "Server status", "value": "..."},
+      {"name": "Error details", "value": "..."},
+      {"name": "Crawl & Traffic", "value": "..."},
+      {"name": "Actionable Suggestions", "value": "..."}
+    ],
+    "footer": {"text": "LogExpert v2.0"}
+  }]
+}
 
 ## Tài Nguyên Cấu Thành
 
