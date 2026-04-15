@@ -25,17 +25,11 @@ def send_to_discord(webhook_url, payload_or_content):
     # Xử lý trường hợp input là JSON string
     if isinstance(payload_or_content, str) and payload_or_content.strip().startswith('{'):
         try:
-            # Thử parse JSON trực tiếp
-            payload = json.loads(payload_or_content)
+            # Sử dụng strict=False để cho phép các ký tự điều khiển (như xuống dòng) trong chuỗi JSON
+            payload = json.loads(payload_or_content, strict=False)
         except json.JSONDecodeError:
-            # Nếu parse lỗi (có thể do chứa newline thực tế), thử fix format trước
-            try:
-                # Thay thế các newline thực tế trong chuỗi JSON thành \n để json.loads không lỗi
-                fixed_content = payload_or_content.replace('\n', '\\n')
-                payload = json.loads(fixed_content)
-            except:
-                # Nếu vẫn lỗi thì coi như text thô
-                payload = {"content": payload_or_content}
+            # Nếu vẫn lỗi thì coi như text thô
+            payload = {"content": payload_or_content}
     else:
         # Mặc định tạo Embed nếu truyền text thô
         payload = {
