@@ -4,12 +4,13 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 SERVERS = [
-    {"name": "wsz-server", "zone": "us-central1-a"},
-    {"name": "orcas", "zone": "us-central1-a"},
-    {"name": "instance-20240707-081221", "zone": "asia-southeast1-a"}
+    {"name": "wsz-server", "alias": "wsz-server", "zone": "us-central1-a"},
+    {"name": "orcas", "alias": "wsz-web-us", "zone": "us-central1-a"},
+    {"name": "instance-20240707-081221", "alias": "wsz-web-sea", "zone": "asia-southeast1-a"}
 ]
 
 def run_ssh_command(server, command):
+    alias = server.get("alias", server["name"])
     ssh_cmd = [
         "gcloud", "compute", "ssh", server["name"],
         "--zone", server["zone"],
@@ -19,13 +20,13 @@ def run_ssh_command(server, command):
         # Timeout 60s cho mỗi server
         result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=60)
         if result.returncode == 0:
-            return server["name"], result.stdout
+            return alias, result.stdout
         else:
-            return server["name"], f"Error: {result.stderr}"
+            return alias, f"Error: {result.stderr}"
     except subprocess.TimeoutExpired:
-        return server["name"], "Error: Connection Timeout (60s)"
+        return alias, "Error: Connection Timeout (60s)"
     except Exception as e:
-        return server["name"], f"Exception: {str(e)}"
+        return alias, f"Exception: {str(e)}"
 
 def get_audit_commands():
     return """
