@@ -24,3 +24,24 @@ Quy trình xử lý của Log Expert được chia làm 3 giai đoạn tự đ�
 3.  **Báo cáo (Reporting):**
     *   Đóng gói toàn bộ kết quả thành một Payload JSON.
     *   Gửi thông báo tới Discord Webhook thông qua `send_to_discord.py`.
+
+## 3. Hướng dẫn sử dụng thủ công (Manual Usage)
+
+### 3.1. Cấu hình Webhook
+Tạo file `.env.logexpert` tại thư mục gốc của dự án:
+```bash
+DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/your_id/your_token"
+```
+
+### 3.2. Chạy Audit hệ thống
+Thực hiện quét log và tài nguyên trên tất cả các server:
+```bash
+python3 scripts/system_audit.py
+```
+*Kết quả sẽ hiển thị dưới dạng JSON chi tiết tại Terminal.*
+
+### 3.3. Gửi báo cáo lên Discord
+Sử dụng kết quả thu được từ lệnh Audit để đẩy thông báo lên kênh giám sát:
+```bash
+python3 scripts/send_to_discord.py '<json_payload>'
+```
