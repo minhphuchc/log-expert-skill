@@ -45,3 +45,14 @@ Sử dụng kết quả thu được từ lệnh Audit để đẩy thông báo 
 ```bash
 python3 scripts/send_to_discord.py '<json_payload>'
 ```
+
+## 4. Tài nguyên & Mở rộng
+
+*   **Expert Knowledge:** Xem chi tiết các mẫu lỗi và cách xử lý tại `references/expert-knowledge.md`.
+*   **Thêm Server:** Cập nhật danh sách `SERVERS` trong `scripts/system_audit.py` để mở rộng phạm vi giám sát.
+*   **Cấu trúc dự án:**
+    *   `scripts/`: Chứa các mã nguồn thực thi chính.
+    *   `tests/`: Các bộ test đảm bảo tính ổn định của hệ thống.
+
+---
+*LogExpert v2.0 | Senior SRE Toolset*
